@@ -48,33 +48,38 @@ int main(int argc, char * argv[])
 
 	int i;
 	pid_t pid;
-	for (i = 0; i <= 1; i++)
+	for (i = 0; i < 2; i++)
 	{
-		if (pid = fork() < 0)
+		if ((pid = fork()) < 0)
 		{
 			fprintf(stderr, "Unable to create child process %d\n", i+1);
 			exit(-1);
 		}
 		else if (pid == 0)
 		{
-			fprintf(stdout, "Created child process %d, PID: %d\n", getpid());
+			fprintf(stdout, "Created child process %d, PID: %d\n", i+1, getpid());
 
 			switch (i)
 			{
 				case 0:
 				{
 					//Executing the first child process, the incrementer
+					puts("In incrementer");
+					break;
 				}
 
 				case 1:
 				{
 					//Executing the second child process, the adder
+					puts("\nIn adder");
+					break;
 				}
 				
-			}			
+			}
+			exit(0);			
 		}
-		exit(0);
 	}
+	exit(0);
 }
 
 void setup_pipes(int *fd_one, int *fd_two)
