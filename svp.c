@@ -9,19 +9,37 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include "util.c"
+
 //File descriptors to be used by pipes
 int fd_one[2];
 int fd_two[2];
 
+//Used to force first process to wait for go ahead signal
+int delayed = 1;
+
+//Command line arguments will set these config variables
+int line_length;
+int num_lines;
+char *input_a;
+char *input_b;
+
+//File pointers to open the input files and output file
+FILE *file_in_1;
+FILE *file_in_2;
+FILE *file_out;
+
 void setup_pipes(int *fd_one, int *fd_two);
-void handle_command_line(int argc, char *argv[]);
+void parse_command_line(int argc, char *argv[]);
+void handle_delay(int num);
 
 int main(int argc, char *argv[])
 {
-	//signal (SIGINT, handle_delay);
+	//Assign function to execute for interrupt signal
+	signal(SIGINT, handle_delay);
 
 	//Handle command line arguments
-	handle_command_line(argc, argv);
+	parse_command_line(argc, argv);
 
 	//Set up the pipes
 	setup_pipes(fd_one, fd_two);
@@ -44,6 +62,28 @@ int main(int argc, char *argv[])
 				{
 					//Executing the first child process, the incrementer
 					puts("\tIn incrementer");
+					
+					//Allocate buffer space for the incoming bitstring plus one for newline character
+					char incoming[line_length + 1];
+
+					while(1)
+					{
+						int received = read(fd_one[0], incoming, sizeof(incoming)); //Might need to add one here
+
+						if (received != 0)
+						{
+							fprintf(stdout, "Incrementer received: %s,\t", incoming);
+							char outgoing[line_length+1];
+							//util.increment on incoming, set in outgoing
+							fprintf(stdout, "Incrementer sent: %s\n", outgoing);
+							write(fd_two[1], outgoing, sizeof(outgoing)); //Might need to add 1 here
+						}
+						else
+						{
+							break;
+						}
+					}
+
 					break;
 				}
 				case 1:
@@ -58,7 +98,7 @@ int main(int argc, char *argv[])
 	}
 }
 
-void handle_command_line(int argc, char *argv[])
+void parse_command_line(int argc, char *argv[])
 {
 	//Command line argument checking and error reporting
 	if (argc != 5)
@@ -69,14 +109,14 @@ void handle_command_line(int argc, char *argv[])
 	}
 
 	//Create file pointers for input files from argument names
-	char *inputA = argv[1];
-	char *inputB = argv[2];
-	fprintf(stdout, "InputA is: %s\n", inputA);
-	fprintf(stdout, "InputB is: %s\n", inputB);
+	input_a = argv[1];
+	input_b = argv[2];
+	fprintf(stdout, "InputA is: %s\n", input_a);
+	fprintf(stdout, "InputB is: %s\n", input_b);
 
 	//Parse bitstring length and number of lines from arguments
-	int line_length = atoi(argv[3]);
-	int num_lines = atoi(argv[4]);
+	line_length = atoi(argv[3]);
+	num_lines = atoi(argv[4]);
 	fprintf(stdout, "BitStringLength is: %d\n", line_length);
 	fprintf(stdout, "NumberOfLines is: %d\n", num_lines);
 }
@@ -93,5 +133,13 @@ void setup_pipes(int *fd_one, int *fd_two)
 	{
 		perror("Failed to create pipe 2");
 		exit(1);
+	}
+}
+
+void handle_delay(int num)
+{
+	if (delayed == 1)
+	{
+		delayed = 0;
 	}
 }
