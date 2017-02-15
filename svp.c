@@ -10,17 +10,20 @@
 #include <signal.h>
 
 // Define constants and functions
+void setup_pipes(int *fd_one, int *fd_two);
 
 int main(int argc, char * argv[])
 {
 	//signal (SIGINT, handle_delay);
+
+	// !!!! Write handle_command_line function
 
 	//Command line argument checking and error reporting
 	if (argc != 5)
 	{
 		fprintf(stderr, "Error initializing program\n");
 		fprintf(stderr, "Usage: ./svp InputA, InputB, BitStringLength, NumberOfLines\n");
-	    exit(1);
+		exit(-1);
 	}
 
 	//Create file pointers for input files from argument names
@@ -36,9 +39,46 @@ int main(int argc, char * argv[])
 	fprintf(stdout, "NumberOfLines is: %d\n", num_lines);
 
 	//Create two file descriptors to be used by pipes
+	//These can be moved to global space
 	int fd_one[2];
 	int fd_two[2];
 
+	//Set up the pipes
+	setup_pipes(fd_one, fd_two);
+
+	int i;
+	pid_t pid;
+	for (i = 0; i <= 1; i++)
+	{
+		if (pid = fork() < 0)
+		{
+			fprintf(stderr, "Unable to create child process %d\n", i+1);
+			exit(-1);
+		}
+		else if (pid == 0)
+		{
+			fprintf(stdout, "Created child process %d, PID: %d\n", getpid());
+
+			switch (i)
+			{
+				case 0:
+				{
+					//Executing the first child process, the incrementer
+				}
+
+				case 1:
+				{
+					//Executing the second child process, the adder
+				}
+				
+			}			
+		}
+		exit(0);
+	}
+}
+
+void setup_pipes(int *fd_one, int *fd_two)
+{
 	//Create two pipes for passing data between child processes
 	if (pipe(fd_one) < 0)
 	{
@@ -50,6 +90,4 @@ int main(int argc, char * argv[])
 		perror("Failed to create pipe 2");
 		exit(1);
 	}
-
-	
 }
