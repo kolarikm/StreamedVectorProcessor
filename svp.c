@@ -1,13 +1,17 @@
-/**************************
+/******************************************
 * Streamed Vector Processor
 * CIS 452 Winter 2017
 * Author: Michael Kolarik
-**************************/
+*
+*
+*
+******************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
+#include <string.h>
 
 #include "util.c"
 
@@ -33,6 +37,10 @@ void setup_pipes(int *fd_one, int *fd_two);
 void parse_command_line(int argc, char *argv[]);
 void handle_delay(int num);
 
+
+/******************************************
+* 
+******************************************/
 int main(int argc, char *argv[])
 {
 	//Assign function to execute for interrupt signal
@@ -74,8 +82,9 @@ int main(int argc, char *argv[])
 						if (received != 0)
 						{
 							fprintf(stdout, "Incrementer received: %s,\t", incoming);
+							//Create array to contain incremented value to send
 							char outgoing[line_length+1];
-							//util.increment on incoming, set in outgoing
+							increment_number(incoming, outgoing);
 							fprintf(stdout, "Incrementer sent: %s\n", outgoing);
 							write(fd_two[1], outgoing, sizeof(outgoing)); //Might need to add 1 here
 						}
@@ -85,21 +94,53 @@ int main(int argc, char *argv[])
 							break;
 						}
 					}
-
 					break;
 				}
 				case 1:
 				{
 					//Executing the second child process, the adder
 					puts("\tIn adder");
+
+
 					break;
 				}
 			}
 			exit(0);			
 		}
 	}
+
+	//The parent process acts as the first stage of the processor
+	char in_buffer[line_length + 1];
+	char to_pipe[line_length + 1];
+
+	//close(fd_one[0]);
+	//close(fd_two[0]);
+	//close(fd_two[1]);
+
+	file_in_2 = fopen(input_b, "r");
+	fprintf(stdout, "Waiting to process... press Ctrl^C to begin\n");
+
+	while (delayed)
+	{
+		;
+	}
+
+	while (fgets(in_buffer, line_length + 2, file_in_2) != NULL)
+	{
+		fprintf(stdout, "Complementer received: %s,\t", in_buffer);
+		complement_number(in_buffer, to_pipe, line_length);
+		fprintf(stdout, "Complementer sent: %s,\n", to_pipe);
+		write(fd_one[1], to_pipe, sizeof(to_pipe));
+	}
+	
+	//close(fd_one[1]);
+
+
 }
 
+/******************************************
+* 
+******************************************/
 void parse_command_line(int argc, char *argv[])
 {
 	//Command line argument checking and error reporting
@@ -123,6 +164,9 @@ void parse_command_line(int argc, char *argv[])
 	fprintf(stdout, "NumberOfLines is: %d\n", num_lines);
 }
 
+/******************************************
+* 
+******************************************/
 void setup_pipes(int *fd_one, int *fd_two)
 {
 	//Create two pipes for passing data between child processes
@@ -138,6 +182,9 @@ void setup_pipes(int *fd_one, int *fd_two)
 	}
 }
 
+/******************************************
+* 
+******************************************/
 void handle_delay(int num)
 {
 	if (delayed == 1)
