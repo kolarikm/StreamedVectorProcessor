@@ -9,15 +9,57 @@
 #include <unistd.h>
 #include <signal.h>
 
-// Define constants and functions
-void setup_pipes(int *fd_one, int *fd_two);
+//File descriptors to be used by pipes
+int fd_one[2];
+int fd_two[2];
 
-int main(int argc, char * argv[])
+void setup_pipes(int *fd_one, int *fd_two);
+void handle_command_line(int argc, char *argv[]);
+
+int main(int argc, char *argv[])
 {
 	//signal (SIGINT, handle_delay);
 
-	// !!!! Write handle_command_line function
+	//Handle command line arguments
+	handle_command_line(argc, argv);
 
+	//Set up the pipes
+	setup_pipes(fd_one, fd_two);
+
+	int i;
+	pid_t pid;
+	for (i = 0; i < 2; i++)
+	{
+		if ((pid = fork()) < 0)
+		{
+			fprintf(stderr, "Unable to create child process %d\n", i+1);
+			exit(-1);
+		}
+		else if (pid == 0)
+		{
+			fprintf(stdout, "Created child process %d, PID: %d\n", i+1, getpid());
+			switch (i)
+			{
+				case 0:
+				{
+					//Executing the first child process, the incrementer
+					puts("\tIn incrementer");
+					break;
+				}
+				case 1:
+				{
+					//Executing the second child process, the adder
+					puts("\tIn adder");
+					break;
+				}
+			}
+			exit(0);			
+		}
+	}
+}
+
+void handle_command_line(int argc, char *argv[])
+{
 	//Command line argument checking and error reporting
 	if (argc != 5)
 	{
@@ -37,49 +79,6 @@ int main(int argc, char * argv[])
 	int num_lines = atoi(argv[4]);
 	fprintf(stdout, "BitStringLength is: %d\n", line_length);
 	fprintf(stdout, "NumberOfLines is: %d\n", num_lines);
-
-	//Create two file descriptors to be used by pipes
-	//These can be moved to global space
-	int fd_one[2];
-	int fd_two[2];
-
-	//Set up the pipes
-	setup_pipes(fd_one, fd_two);
-
-	int i;
-	pid_t pid;
-	for (i = 0; i < 2; i++)
-	{
-		if ((pid = fork()) < 0)
-		{
-			fprintf(stderr, "Unable to create child process %d\n", i+1);
-			exit(-1);
-		}
-		else if (pid == 0)
-		{
-			fprintf(stdout, "Created child process %d, PID: %d\n", i+1, getpid());
-
-			switch (i)
-			{
-				case 0:
-				{
-					//Executing the first child process, the incrementer
-					puts("In incrementer");
-					break;
-				}
-
-				case 1:
-				{
-					//Executing the second child process, the adder
-					puts("\nIn adder");
-					break;
-				}
-				
-			}
-			exit(0);			
-		}
-	}
-	exit(0);
 }
 
 void setup_pipes(int *fd_one, int *fd_two)
