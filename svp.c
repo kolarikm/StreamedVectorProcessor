@@ -70,6 +70,7 @@ int main(int argc, char *argv[])
 					{
 						int received = read(fd_one[0], incoming, sizeof(incoming)); //Might need to add one here
 
+						//While there are still bytes being read
 						if (received != 0)
 						{
 							fprintf(stdout, "Incrementer received: %s,\t", incoming);
@@ -78,6 +79,7 @@ int main(int argc, char *argv[])
 							fprintf(stdout, "Incrementer sent: %s\n", outgoing);
 							write(fd_two[1], outgoing, sizeof(outgoing)); //Might need to add 1 here
 						}
+						//Leave the process when there are no more bytes to read from the buffer
 						else
 						{
 							break;
