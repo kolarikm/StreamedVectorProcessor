@@ -18,6 +18,7 @@ void complement_number(char *incoming, char *outgoing, int len);
 void increment_number(char *incoming, char *outgoing, int len);
 int convert_to_binary(int num);
 void add_numbers(char *add_a, char *add_b, char *outgoing, int len);
+void setup_pipes(int *fd_one, int *fd_two);
 
 /******************************************
 * 
@@ -85,4 +86,22 @@ void add_numbers(char *add_a, char *add_b, char *outgoing, int len)
 	add_res = add_a_res + add_b_res;
 	add_res = convert_to_binary(add_res);
 	sprintf(outgoing, "%0*d", len, add_res);
+}
+
+/*********************************************************
+* 
+*********************************************************/
+void setup_pipes(int *fd_one, int *fd_two)
+{
+	//Create two pipes for passing data between child processes
+	if (pipe(fd_one) < 0)
+	{
+		perror("Failed to create pipe 1");
+		exit(1);
+	}
+	if (pipe(fd_two) < 0)
+	{
+		perror("Failed to create pipe 2");
+		exit(1);
+	}
 }

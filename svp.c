@@ -1,11 +1,13 @@
-/******************************************
+/*********************************************************
 * Streamed Vector Processor
 * CIS 452 Winter 2017
 * Author: Michael Kolarik
 *
-*
-*
-******************************************/
+* The program performs the subtraction of 2 binary numbers
+* which are read in from external files. Three separate
+* processes communicate using pipes - each performing a
+* small piece of the overall operation.
+*********************************************************/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -33,16 +35,21 @@ FILE *file_in_1;
 FILE *file_in_2;
 FILE *file_out;
 
+//Store the name of the desired output file
 char *output = "output.dat";
 
-void setup_pipes(int *fd_one, int *fd_two);
+//Function declarations
 void parse_command_line(int argc, char *argv[]);
-void handle_delay(int num);
+void handle_delay();
 
 
-/******************************************
-* 
-******************************************/
+/*********************************************************
+* The main function acts as the parent process, as well as
+* fulfilling the requirement of reading in one of the
+* input files and performing a binary complement to the
+* number before passing it through the first pipe to the
+* child process responsible for incrementing the number.
+*********************************************************/
 int main(int argc, char *argv[])
 {
 	//Assign function to execute for interrupt signal
@@ -54,6 +61,7 @@ int main(int argc, char *argv[])
 	//Set up the pipes
 	setup_pipes(fd_one, fd_two);
 
+	//Fork logic used to spawn only 2 child processes
 	int i;
 	pid_t pid;
 	for (i = 0; i < 2; i++)
@@ -71,11 +79,12 @@ int main(int argc, char *argv[])
 				//Executing the first child process, the incrementer
 				case 0:
 				{
-					//Allocate buffer space for the incoming bitstring plus one for newline character
+					//Create variable space for the incoming bitstring plus one for newline character
 					char incoming[line_length + 1];
 
 					while(1)
 					{
+						//Read from the first pipe, and place it in the incoming array space
 						int received = read(fd_one[0], incoming, sizeof(incoming)); 
 
 						//While there are still bytes being read
@@ -86,7 +95,7 @@ int main(int argc, char *argv[])
 							char outgoing[line_length+1];
 							increment_number(incoming, outgoing, line_length);
 							fprintf(stdout, "Incrementer sent: %s\n", outgoing);
-							write(fd_two[1], outgoing, sizeof(outgoing)); //Might need to add 1 here
+							write(fd_two[1], outgoing, sizeof(outgoing));
 						}
 						//Leave the process when there are no more bytes to read from the buffer
 						else
@@ -99,16 +108,20 @@ int main(int argc, char *argv[])
 				//Executing the second child process, the adder
 				case 1:
 				{
+					//Create variables for both incoming from the pipe and reading from external input
 					char incoming[line_length + 1];
 					char in_buffer[line_length + 1];
 
+					//Assign input and output files
 					file_in_1 = fopen(input_a, "r");
 					file_out = fopen(output, "w");
 
 					while(1)
 					{
+						//Read from the second pipe, and place it in the incoming array space
 						int received = read(fd_two[0], incoming, sizeof(incoming));
 
+						//While there are lines to read, place the line into input buffer
 						if (fgets(in_buffer, line_length + 3, file_in_1) == NULL)
 						{
 							break;
@@ -117,6 +130,7 @@ int main(int argc, char *argv[])
 						//While there are still bytes being read from pipe
 						if (received != 0)
 						{
+							//Strip buffers of problematic newlines
 							in_buffer[strcspn(incoming, "\r\n")] = 0;
 							in_buffer[strcspn(in_buffer, "\r\n")] = 0;
 							fprintf(stdout, "Adder received: %s\t", incoming);
@@ -124,6 +138,7 @@ int main(int argc, char *argv[])
 							//Create array to contain added value to output
 							char outgoing[line_length+1];
 							add_numbers(incoming, in_buffer, outgoing, line_length);
+							//Output added value to external file
 							fprintf(file_out, "%s\n", outgoing);
 							fprintf(stdout, "Adder writing: %s\n", outgoing);
 							fflush(file_out);								
@@ -134,7 +149,8 @@ int main(int argc, char *argv[])
 							break;
 						}
 					}
-					fclose(file_out);	
+					fclose(file_out);
+					fclose(file_in_1);	
 					break;
 				}
 			}
@@ -146,13 +162,11 @@ int main(int argc, char *argv[])
 	char in_buffer[line_length + 1];
 	char to_pipe[line_length + 1];
 
-	//close(fd_one[0]);
-	//close(fd_two[0]);
-	//close(fd_two[1]);
-
+	//Assigning input file for complement process
 	file_in_2 = fopen(input_b, "r");
 	fprintf(stdout, "Waiting to process... press Ctrl^C to begin\n");
 
+	//Busy-wait until user signals processing to begin
 	while (delayed)
 	{
 		;
@@ -160,6 +174,7 @@ int main(int argc, char *argv[])
 
 	fprintf(stdout, "\nStarting processing...\n");
 
+	//Read data from input file until all lines are complete
 	while (fgets(in_buffer, line_length + 3, file_in_2) != NULL)
 	{
 		in_buffer[strcspn(in_buffer, "\r\n")] = 0;
@@ -168,15 +183,19 @@ int main(int argc, char *argv[])
 		fprintf(stdout, "Complementer sent: %s\n", to_pipe);
 		write(fd_one[1], to_pipe, sizeof(to_pipe));
 	}
-	
-	//close(fd_one[1]);
 
-
+	//Close all file descriptors and open files
+	close(fd_one[0]);
+	close(fd_one[1]);
+	close(fd_two[0]);
+	close(fd_two[1]);
+	fclose(file_in_2);
 }
 
-/******************************************
+
+/*********************************************************
 * 
-******************************************/
+*********************************************************/
 void parse_command_line(int argc, char *argv[])
 {
 	//Command line argument checking and error reporting
@@ -200,28 +219,10 @@ void parse_command_line(int argc, char *argv[])
 	fprintf(stdout, "NumberOfLines is: %d\n", num_lines);
 }
 
-/******************************************
+/*********************************************************
 * 
-******************************************/
-void setup_pipes(int *fd_one, int *fd_two)
-{
-	//Create two pipes for passing data between child processes
-	if (pipe(fd_one) < 0)
-	{
-		perror("Failed to create pipe 1");
-		exit(1);
-	}
-	if (pipe(fd_two) < 0)
-	{
-		perror("Failed to create pipe 2");
-		exit(1);
-	}
-}
-
-/******************************************
-* 
-******************************************/
-void handle_delay(int num)
+*********************************************************/
+void handle_delay()
 {
 	if (delayed == 1)
 	{
