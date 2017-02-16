@@ -194,7 +194,9 @@ int main(int argc, char *argv[])
 
 
 /*********************************************************
-* 
+* Receive the command line arugments and process them.
+* Guarantees that the proper number of arguements are
+* passed to the main program
 *********************************************************/
 void parse_command_line(int argc, char *argv[])
 {
@@ -220,7 +222,8 @@ void parse_command_line(int argc, char *argv[])
 }
 
 /*********************************************************
-* 
+* Simple delay handling function. Upon proper user signal
+* toggle the value used to force parent to busy wait
 *********************************************************/
 void handle_delay()
 {
