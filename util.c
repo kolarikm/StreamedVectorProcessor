@@ -12,18 +12,19 @@
 #include <stdio.h>
 
 //Used to store results of number operations
-int inc_res;
-int comp_res;
+int inc_res, comp_res, add_a_res, add_b_res, add_res;
 
 void complement_number(char *incoming, char *outgoing, int len);
-void increment_number(char *incoming, char *outgoing);
+void increment_number(char *incoming, char *outgoing, int len);
 int convert_to_binary(int num);
+void add_numbers(char *add_a, char *add_b, char *outgoing, int len);
 
 /******************************************
 * 
 ******************************************/
 void complement_number(char *incoming, char *outgoing, int len)
 {
+	incoming[len] = '\0';
 	int i;
 	for (i = 0; i < len+1; i++)
 	{
@@ -44,12 +45,12 @@ void complement_number(char *incoming, char *outgoing, int len)
 * integer, then add one, re-encode as a
 * binary string before copying to array
 ******************************************/
-void increment_number(char *incoming, char *outgoing)
+void increment_number(char *incoming, char *outgoing, int len)
 {
 	inc_res = (int)strtol(incoming, 0, 2);
 	inc_res++;
 	inc_res = convert_to_binary(inc_res);
-	sprintf(outgoing, "%d", inc_res);
+	sprintf(outgoing, "%0*d", len, inc_res);
 }
 
 /******************************************
@@ -72,4 +73,16 @@ int convert_to_binary(int num)
 		base = base * 10;
 	}
 	return binary;
+}
+
+/******************************************
+* 
+******************************************/
+void add_numbers(char *add_a, char *add_b, char *outgoing, int len)
+{
+	add_a_res = (int)strtol(add_a, 0, 2);
+	add_b_res = (int)strtol(add_b, 0, 2);
+	add_res = add_a_res + add_b_res;
+	add_res = convert_to_binary(add_res);
+	sprintf(outgoing, "%0*d", len, add_res);
 }

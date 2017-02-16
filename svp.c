@@ -33,6 +33,8 @@ FILE *file_in_1;
 FILE *file_in_2;
 FILE *file_out;
 
+char *output = "output.dat";
+
 void setup_pipes(int *fd_one, int *fd_two);
 void parse_command_line(int argc, char *argv[]);
 void handle_delay(int num);
@@ -66,25 +68,23 @@ int main(int argc, char *argv[])
 			fprintf(stdout, "Created child process %d, PID: %d\n", i+1, getpid());
 			switch (i)
 			{
+				//Executing the first child process, the incrementer
 				case 0:
 				{
-					//Executing the first child process, the incrementer
-					puts("\tIn incrementer");
-					
 					//Allocate buffer space for the incoming bitstring plus one for newline character
 					char incoming[line_length + 1];
 
 					while(1)
 					{
-						int received = read(fd_one[0], incoming, sizeof(incoming)); //Might need to add one here
+						int received = read(fd_one[0], incoming, sizeof(incoming)); 
 
 						//While there are still bytes being read
 						if (received != 0)
 						{
-							fprintf(stdout, "Incrementer received: %s,\t", incoming);
+							fprintf(stdout, "Incrementer received: %s\t", incoming);
 							//Create array to contain incremented value to send
 							char outgoing[line_length+1];
-							increment_number(incoming, outgoing);
+							increment_number(incoming, outgoing, line_length);
 							fprintf(stdout, "Incrementer sent: %s\n", outgoing);
 							write(fd_two[1], outgoing, sizeof(outgoing)); //Might need to add 1 here
 						}
@@ -96,12 +96,45 @@ int main(int argc, char *argv[])
 					}
 					break;
 				}
+				//Executing the second child process, the adder
 				case 1:
 				{
-					//Executing the second child process, the adder
-					puts("\tIn adder");
+					char incoming[line_length + 1];
+					char in_buffer[line_length + 1];
 
+					file_in_1 = fopen(input_a, "r");
+					file_out = fopen(output, "w");
 
+					while(1)
+					{
+						int received = read(fd_two[0], incoming, sizeof(incoming));
+
+						if (fgets(in_buffer, line_length + 3, file_in_1) == NULL)
+						{
+							break;
+						}
+
+						//While there are still bytes being read from pipe
+						if (received != 0)
+						{
+							in_buffer[strcspn(incoming, "\r\n")] = 0;
+							in_buffer[strcspn(in_buffer, "\r\n")] = 0;
+							fprintf(stdout, "Adder received: %s\t", incoming);
+							fprintf(stdout, "Adder read: %s\t", in_buffer);
+							//Create array to contain added value to output
+							char outgoing[line_length+1];
+							add_numbers(incoming, in_buffer, outgoing, line_length);
+							fprintf(file_out, "%s\n", outgoing);
+							fprintf(stdout, "Adder writing: %s\n", outgoing);
+							fflush(file_out);								
+						}
+						//Leave the process when there are no more bytes to read from the buffer
+						else
+						{
+							break;
+						}
+					}
+					fclose(file_out);	
 					break;
 				}
 			}
@@ -125,11 +158,14 @@ int main(int argc, char *argv[])
 		;
 	}
 
-	while (fgets(in_buffer, line_length + 2, file_in_2) != NULL)
+	fprintf(stdout, "\nStarting processing...\n");
+
+	while (fgets(in_buffer, line_length + 3, file_in_2) != NULL)
 	{
-		fprintf(stdout, "Complementer received: %s,\t", in_buffer);
+		in_buffer[strcspn(in_buffer, "\r\n")] = 0;
+		fprintf(stdout, "Complementer received: %s\t", in_buffer);
 		complement_number(in_buffer, to_pipe, line_length);
-		fprintf(stdout, "Complementer sent: %s,\n", to_pipe);
+		fprintf(stdout, "Complementer sent: %s\n", to_pipe);
 		write(fd_one[1], to_pipe, sizeof(to_pipe));
 	}
 	
